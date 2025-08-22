@@ -1,24 +1,29 @@
+import type { Message } from "./types";
 
 
 type Model = "openai/gpt-4o" | "openai/gpt-5" 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_KEY
 
-type Role = "agent" | "user";
-type Message = {
-    content: string,
-    role: Role
-}
+// type Role = "agent" | "user";
+// type Message = {
+//     content: string,
+//     role: Role
+// }
 
-export const createCompletion = async (message: Message[], model: Model)=>{
-    const question = 'How would you build the tallest building ever?';
+export const createCompletion = async (message: Message[],model: Model,
+    cb: (chunk: string) => void
+)=>{
+    return new Promise<void>(async(resolve, reject)=>{
+        
+    })
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
-        Authorization: `Bearer <OPENROUTER_API_KEY>`,
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-        model: 'openai/gpt-4o',
+        model,
         messages: [{ role: 'user', content: question }],
         stream: true,
     }),
@@ -42,26 +47,27 @@ export const createCompletion = async (message: Message[], model: Model)=>{
 
         // Process complete lines from buffer
         while (true) {
-        const lineEnd = buffer.indexOf('\n');
-        if (lineEnd === -1) break;
+            const lineEnd = buffer.indexOf('\n');
+            if (lineEnd === -1) break;
 
-        const line = buffer.slice(0, lineEnd).trim();
-        buffer = buffer.slice(lineEnd + 1);
+            const line = buffer.slice(0, lineEnd).trim();
+            buffer = buffer.slice(lineEnd + 1);
 
-        if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') break;
+            if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') break;
 
-            try {
-            const parsed = JSON.parse(data);
-            const content = parsed.choices[0].delta.content;
-            if (content) {
-                console.log(content);// this is where content comes
+                try {
+                const parsed = JSON.parse(data);
+                const content = parsed.choices[0].delta.content;
+                if (content) {
+                    cb(content);// this is where content comes
+                }
+                } catch (e) {
+                // Ignore invalid JSON
+                reject()
+                }
             }
-            } catch (e) {
-            // Ignore invalid JSON
-            }
-        }
         }
     }
     } finally {
